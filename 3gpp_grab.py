@@ -360,7 +360,10 @@ def html_spec(d):
 
 def check_meeting_num(t, n):
     try:
-        i = re.search("\d+",t).group(0)
+        l = t.split('_') 
+        if (2 < len(l)):
+            return False
+        i = re.search("\d+",l[1]).group(0)
         i = int(i)
         if (i >= n):
             return True 
