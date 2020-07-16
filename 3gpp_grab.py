@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 '''
-Created on 2020年7月14日
-
-@author: tdl
+Created on 2020-07-14
+@author: delong tang
 '''
 
 import os
