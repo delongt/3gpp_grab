@@ -12,21 +12,23 @@ import zipfile
 
 http2handle = httplib2.Http()
 
-path_spec = '/home/share/3gpp/specs/'
+path_root = './'
+
+path_spec = os.path.join(path_root, 'specs')
 url_spec = 'https://www.3gpp.org/ftp/Specs/archive' 
 url_spec_rm = 'https://www.3gpp.org/DynaReport/SpecReleaseMatrix.htm'
 spec_list = ['21', '22', '23', '24', '28', '29', '32', '33', '35', '36', '37', '38']
 
-path_contrib = '/home/share/3gpp/contribs/'
+path_contrib = os.path.join(path_root, 'contribs')
 contrb_list = [ \
-                ['TSGR', 'https://www.3gpp.org/ftp/tsg_ran/TSG_RAN', 85], \
-                ['TSGR1', 'https://www.3gpp.org/ftp/tsg_ran/WG1_RL1', 100],\
-                ['TSGR2', 'https://www.3gpp.org/ftp/tsg_ran/WG2_RL2', 106],\
-                ['TSGR3', 'https://www.3gpp.org/ftp/tsg_ran/WG3_Iu', 102],\
-                ['TSGR4', 'https://www.3gpp.org/ftp/tsg_ran/WG4_Radio', 93],\
+                ['TSGR', 'https://www.3gpp.org/ftp/tsg_ran/TSG_RAN', 87], \
+                ['TSGR1', 'https://www.3gpp.org/ftp/tsg_ran/WG1_RL1', 101],\
+                ['TSGR2', 'https://www.3gpp.org/ftp/tsg_ran/WG2_RL2', 108],\
+                ['TSGR3', 'https://www.3gpp.org/ftp/tsg_ran/WG3_Iu', 107],\
+                ['TSGR4', 'https://www.3gpp.org/ftp/tsg_ran/WG4_Radio', 94],\
                 ['TSGS', 'https://www.3gpp.org/ftp/tsg_sa/TSG_SA', 85],\
-                ['TSGS1', 'https://www.3gpp.org/ftp/tsg_sa/WG1_Serv', 85],\
-                ['TSGS2', 'https://www.3gpp.org/ftp/tsg_sa/WG2_Arch', 133],\
+                ['TSGS1', 'https://www.3gpp.org/ftp/tsg_sa/WG1_Serv', 88],\
+                ['TSGS2', 'https://www.3gpp.org/ftp/tsg_sa/WG2_Arch', 137],\
                 ['TSGS3', 'https://www.3gpp.org/ftp/tsg_sa/WG3_Security', 95],\
                 ['TSGS5', 'https://www.3gpp.org/ftp/tsg_sa/WG5_TM', 127],\
                 ['TSGS6', 'https://www.3gpp.org/ftp/tsg_sa/WG6_MissionCritical', 34]\
@@ -126,7 +128,7 @@ def get_spec_title(s, l):
         printex(str(ex))
     return ''
 
-def get_zip_file(f,h):
+def get_zip_file(f, h):
     try:
         r,c = http2handle.request(h)
     except Exception as ex:
@@ -302,10 +304,10 @@ str_html = '''<html>
   {title_}
  </head>
  <body link="blue" vlink="purple">
-  <table width="800" border="1">
-   <col width="50">
+  <table width="1200" border="1">
+   <col width="80">
    <col width="150">
-   <col width="680">
+   <col width="970">
    {content_} 
   </table>
  </body>
@@ -351,7 +353,7 @@ def html_spec(d):
         return
     try:
         s = str_html.format(title_ = '3GPP TS & TR', content_ = s0)
-        p = os.path.join(path_spec, '3gpp_spec.html')
+        p = os.path.join(path_root, '3gpp_spec.html')
         with open(p, 'w')as fp:
             fp.write(s)
     except Exception as ex:
@@ -363,8 +365,11 @@ def check_meeting_num(t, n):
         l = t.split('_') 
         if (2 < len(l)):
             return False
-        i = re.search("\d+",l[1]).group(0)
-        i = int(i)
+        r = re.search("\d+",l[1])
+        if r is None:
+            return False
+        s = r.group(0)
+        i = int(s)
         if (i >= n):
             return True 
     except Exception as ex:
@@ -534,7 +539,7 @@ def html_contrib(t, d):
         return
     try:
         s = str_html.format(title_ = t, content_ = s0)
-        p = os.path.join(path_contrib, t + '.html')
+        p = os.path.join(path_root, t + '.html')
         with open(p, 'w')as fp:
             fp.write(s)
     except Exception as ex:
