@@ -9,6 +9,7 @@ import re
 import httplib2
 from bs4 import BeautifulSoup
 import zipfile
+import pandas as pd
 
 http2handle = httplib2.Http()
 
@@ -21,18 +22,19 @@ spec_list = ['21', '22', '23', '24', '28', '29', '32', '33', '35', '36', '37', '
 
 path_contrib = os.path.join(path_root, 'contribs')
 contrb_list = [ \
-                ['TSGR', 'https://www.3gpp.org/ftp/tsg_ran/TSG_RAN', 87], \
-                ['TSGR1', 'https://www.3gpp.org/ftp/tsg_ran/WG1_RL1', 101],\
-                ['TSGR2', 'https://www.3gpp.org/ftp/tsg_ran/WG2_RL2', 108],\
-                ['TSGR3', 'https://www.3gpp.org/ftp/tsg_ran/WG3_Iu', 107],\
-                ['TSGR4', 'https://www.3gpp.org/ftp/tsg_ran/WG4_Radio', 94],\
-                ['TSGS', 'https://www.3gpp.org/ftp/tsg_sa/TSG_SA', 85],\
-                ['TSGS1', 'https://www.3gpp.org/ftp/tsg_sa/WG1_Serv', 88],\
-                ['TSGS2', 'https://www.3gpp.org/ftp/tsg_sa/WG2_Arch', 137],\
-                ['TSGS3', 'https://www.3gpp.org/ftp/tsg_sa/WG3_Security', 95],\
-                ['TSGS5', 'https://www.3gpp.org/ftp/tsg_sa/WG5_TM', 127],\
-                ['TSGS6', 'https://www.3gpp.org/ftp/tsg_sa/WG6_MissionCritical', 34]\
+                ['TSGR', 'https://www.3gpp.org/ftp/tsg_ran/TSG_RAN', 80], \
+                ['TSGR1', 'https://www.3gpp.org/ftp/tsg_ran/WG1_RL1', 96],\
+                ['TSGR2', 'https://www.3gpp.org/ftp/tsg_ran/WG2_RL2', 100],\
+                ['TSGR3', 'https://www.3gpp.org/ftp/tsg_ran/WG3_Iu', 100],\
+                ['TSGR4', 'https://www.3gpp.org/ftp/tsg_ran/WG4_Radio', 90],\
+                ['TSGS', 'https://www.3gpp.org/ftp/tsg_sa/TSG_SA', 80],\
+                ['TSGS1', 'https://www.3gpp.org/ftp/tsg_sa/WG1_Serv', 80],\
+                ['TSGS2', 'https://www.3gpp.org/ftp/tsg_sa/WG2_Arch', 130],\
+                ['TSGS3', 'https://www.3gpp.org/ftp/tsg_sa/WG3_Security', 90],\
+                ['TSGS5', 'https://www.3gpp.org/ftp/tsg_sa/WG5_TM', 120],\
+                ['TSGS6', 'https://www.3gpp.org/ftp/tsg_sa/WG6_MissionCritical', 30]\
               ]
+
 
 def printex(s):
     print(s)
@@ -65,7 +67,7 @@ def get_plain_text(s):
     
 def get_spec_name(s):
     try:
-        ls = s.find_all(name='td');
+        ls = s.find_all(name='td')
         if (2 > len(ls)):
             return '',''
         s1 = get_plain_text(ls[0])
@@ -128,7 +130,7 @@ def get_spec_title(s, l):
         printex(str(ex))
     return ''
 
-def get_zip_file(f, h):
+def get_zip_file(p, h):
     try:
         r,c = http2handle.request(h)
     except Exception as ex:
@@ -139,8 +141,29 @@ def get_zip_file(f, h):
             return False  
         s = r['content-type']
         if ('zip' in s):
-            with open(f, 'wb')as fp:
-                fp.write(c)
+            f = open(p, 'wb')
+            f.write(c)
+            f.close()
+            print('get ' + h)
+            return True
+    except Exception as ex:
+        printex(str(ex))
+    return False
+
+def get_xls_file(p, h):
+    try:
+        r,c = http2handle.request(h)
+    except Exception as ex:
+        printex(str(ex))
+        return False
+    try:
+        if ('OK' not in r.reason):
+            return False  
+        s = r['content-type']
+        if ('officedocument' in s):
+            f = open(p, 'wb')
+            f.write(c)
+            f.close()
             print('get ' + h)
             return True
     except Exception as ex:
@@ -172,7 +195,7 @@ def get_spec_file(p, n, h):
         printex(str(ex))
         return ''
     try:
-        b, cs = check_resp(r);
+        b, cs = check_resp(r)
         if (not b):
             return ''
     except Exception as ex:
@@ -209,7 +232,7 @@ def get_series(s, p, lm):
         printex(str(ex))
         return []
     try:
-        b, cs = check_resp(r);
+        b, cs = check_resp(r)
         if (not b):
             return []
     except Exception as ex:
@@ -248,7 +271,7 @@ def grab_spec():
         printex(str(ex))
         return {}
     try:
-        b, cs = check_resp(r);
+        b, cs = check_resp(r)
         if (not b):
             return {}
     except Exception as ex:
@@ -268,7 +291,7 @@ def grab_spec():
         printex(str(ex))
         return {}
     try:
-        b, cs = check_resp(r);
+        b, cs = check_resp(r)
         if (not b):
             return {}
     except Exception as ex:
@@ -353,9 +376,11 @@ def html_spec(d):
         return
     try:
         s = str_html.format(title_ = '3GPP TS & TR', content_ = s0)
-        p = os.path.join(path_root, '3gpp_spec.html')
-        with open(p, 'w')as fp:
-            fp.write(s)
+        s = s.encode('utf-8')
+        p = os.path.join(path_root, '3GPP_SPEC.html')
+        f = open(p, mode = 'wb')
+        f.write(s)
+        f.close()
     except Exception as ex:
         printex(str(ex))
     return
@@ -391,8 +416,53 @@ def get_zip_fn(f):
                 s = s + '\n' + l[i]
             return s     
     except Exception as ex:
-        printex(str(ex))
+        printex(f + ' -- ' + str(ex))
     return ''
+
+def get_xls_info(p, d):
+    try:
+        df = pd.read_excel(p, sheet_name='TDoc_List')
+    except Exception as ex:
+        printex(str(ex))
+        return
+    try:
+        dt = df.loc[:,['TDoc','Title']].values
+    except Exception as ex:
+        printex(str(ex))
+        return
+    try:
+        if (1 > len(dt)):
+            return
+        for td, ti in dt:
+            if td not in d:
+                d[td] = ti
+            elif (len(ti) > len(d[td])):
+                d[td] = ti
+    except Exception as ex:
+        printex(str(ex))
+        return
+    return
+
+def name_del_zip(s):
+    ss = 'something wrong!'
+    try:
+        ss = s.replace('.zip', '')
+    except Exception as ex:
+        printex(str(ex))
+    return ss
+
+def update_contrib_info(l, d):
+    try:
+        for i in range(len(l)):
+            try:
+                s = name_del_zip(l[i][0])
+                if s in d:
+                    l[i][1] = d[s]
+            except Exception as ex:
+                printex(str(ex))
+    except Exception as ex:
+        printex(str(ex))
+    return
 
 def grab_meeting_file(p, h):
     try:
@@ -402,7 +472,7 @@ def grab_meeting_file(p, h):
         printex(str(ex))
         return []
     try:
-        b, cs = check_resp(r);
+        b, cs = check_resp(r)
         if (not b):
             return []
     except Exception as ex:
@@ -416,20 +486,31 @@ def grab_meeting_file(p, h):
         printex(str(ex))
         return []
     ll = []
+    d = {}
     for l1, l2 in l:
         try:
-            if (not ((h in l2) and ('zip' in l2))):
+            if (h not in l2):
                 continue
-            f = os.path.join(p, l1)
-            if not (os.path.exists(f)):
-                if not get_zip_file(f,l2):
-                    print('cannot get ' + l2)
-                    continue
-            s = get_zip_fn(f)
-            if (0 < len(s)):
-                ll.append([l1, s, f])
+            if ('zip' in l2):
+                f = os.path.join(p, l1)
+                if not (os.path.exists(f)):
+                    if not get_zip_file(f,l2):
+                        print('cannot get ' + l2)
+                        continue
+                s = get_zip_fn(f)
+                if (0 < len(s)):
+                    ll.append([l1, s, f])
+            elif (('TDoc_List_Meeting_' in l2) and ('.xls' in l2)):
+                f = os.path.join(p, l1)
+                if not (os.path.exists(f)):
+                    if not get_xls_file(f,l2):
+                        print('cannot get ' + l2)
+                        continue
+                get_xls_info(f, d)
         except Exception as ex:
             printex(str(ex))
+    if (0 < len(d)):
+        update_contrib_info(ll, d)
     return ll
 
 def grab_meeting(p, t, h, n):
@@ -449,7 +530,7 @@ def grab_meeting(p, t, h, n):
         printex(str(ex))
         return []
     try:
-        b, cs = check_resp(r);
+        b, cs = check_resp(r)
         if (not b):
             return []
     except Exception as ex:
@@ -485,7 +566,7 @@ def grab_contrib(t, h, n):
         printex(str(ex))
         return {}
     try:
-        b, cs = check_resp(r);
+        b, cs = check_resp(r)
         if (not b):
             return {}
     except Exception as ex:
@@ -539,20 +620,22 @@ def html_contrib(t, d):
         return
     try:
         s = str_html.format(title_ = t, content_ = s0)
+        s = s.encode('utf-8')
         p = os.path.join(path_root, t + '.html')
-        with open(p, 'w')as fp:
-            fp.write(s)
+        f = open(p, mode = 'wb')
+        f.write(s)
+        f.close()
     except Exception as ex:
         printex(str(ex))
     return
 
 if __name__ == '__main__':
-    try:
-        d = grab_spec()
-        if (0 < len(d)):
-            html_spec(d)
-    except Exception as ex:
-        printex(str(ex))
+#     try:
+#         d = grab_spec()
+#         if (0 < len(d)):
+#             html_spec(d)
+#     except Exception as ex:
+#         printex(str(ex))
     try:
         for t, h, n in contrb_list:
             print('begin to get ' + h)
