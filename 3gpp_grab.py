@@ -35,20 +35,36 @@ contrb_list = [ \
                 ['TSGS6', 'https://www.3gpp.org/ftp/tsg_sa/WG6_MissionCritical', 30]\
               ]
 
-
 def printex(s):
     print(s)
     return
 
 def get_href(s):
+    tit = ''
+    ref = ''
+    siz = 0
     try:
-        r1 = re.findall('href=".*"',str(s))
-        r2 = re.findall('>.*<',str(s))
-        if ((1 == len(r1)) or (1 == len(r2))):
-            return r2[0][1:-1], r1[0][6:-1]
+        l = s.find_all(name='td')
+        if (1 > len(l)):
+            return tit, ref, siz
+        for e in l:
+            ll = e.find_all(name='a')
+            if (0 < len(ll)):
+                r1 = re.findall('href=".*"',str(e))
+                r2 = re.findall('>.*<',str(e))
+                ref = r1[0][6:-1]
+                tit = r2[0][1:-1]
+            else:
+                ss = get_plain_text(e)
+                if 'KB' not in ss:
+                    continue
+                ss = ss.replace(',', '')
+                ss = ss.replace('KB', '')
+                ss = ss.strip()
+                siz = int(ss) * 1024
     except Exception as ex:
         printex(str(ex))
-    return '',''
+    return tit, ref, siz
 
 def get_plain_text(s):
     try:
@@ -130,7 +146,17 @@ def get_spec_title(s, l):
         printex(str(ex))
     return ''
 
-def get_zip_file(p, h):
+def get_zip_file(p, h, size):
+    try:
+        if (not os.path.exists(p)):
+            sz = 0
+        else:
+            sz = os.path.getsize(p)
+            if  (size <= sz):
+                return True  
+    except Exception as ex:
+        printex(str(ex))
+        return False
     try:
         r,c = http2handle.request(h)
     except Exception as ex:
@@ -141,6 +167,8 @@ def get_zip_file(p, h):
             return False  
         s = r['content-type']
         if ('zip' in s):
+            if (len(c) <= sz):
+                return True
             f = open(p, 'wb')
             f.write(c)
             f.close()
@@ -150,7 +178,17 @@ def get_zip_file(p, h):
         printex(str(ex))
     return False
 
-def get_xls_file(p, h):
+def get_xls_file(p, h, size):
+    try:
+        if (not os.path.exists(p)):
+            sz = 0
+        else:
+            sz = os.path.getsize(p)
+            if  (size <= sz):
+                return True  
+    except Exception as ex:
+        printex(str(ex))
+        return False
     try:
         r,c = http2handle.request(h)
     except Exception as ex:
@@ -161,6 +199,8 @@ def get_xls_file(p, h):
             return False  
         s = r['content-type']
         if ('officedocument' in s):
+            if (len(c) <= sz):
+                return True
             f = open(p, 'wb')
             f.write(c)
             f.close()
@@ -174,15 +214,19 @@ def parse_url(c, s):
     try:
         soup = BeautifulSoup(c, "html5lib")
         soup.prettify()
-        l = []
-        ll = soup.find_all(name='a')
-        if (1 > len(ll)):
+    except Exception as ex:
+        printex(str(ex))
+        return []
+    r = []
+    try:
+        l = soup.find_all(name='tr')
+        if (1 > len(l)):
             return []
-        for e in ll:
-            l1, l2 = get_href(e)
+        for e in l:
+            l1, l2, sz = get_href(e)
             if (0 < len(l1)):
-                l.append([l1, l2])
-        return l
+                r.append([l1, l2, sz])
+        return r
     except Exception as ex:
         printex(str(ex))
     return []
@@ -210,14 +254,12 @@ def get_spec_file(p, n, h):
         return ''
     try:
         ll = []
-        for l1, l2 in l:
+        for l1, l2, size in l:
             if ((h in l2) and ('zip' in l2)):
                 ll.append([l1, l2])
         ll = sorted(ll, key=lambda k: k[0], reverse = True)
         f = os.path.join(p, ll[0][0])
-        if (os.path.exists(f)):
-            return f
-        if get_zip_file(f,ll[0][1]):
+        if get_zip_file(f, ll[0][1], size):
             return f
     except Exception as ex:
         printex(str(ex))
@@ -246,7 +288,7 @@ def get_series(s, p, lm):
         printex(str(ex))
         return []
     try:
-        for l1,l2 in l:
+        for l1, l2, _ in l:
             if s not in l2:
                 continue
             sn = get_spec_title(l1, lm)
@@ -306,7 +348,7 @@ def grab_spec():
         return {}
     try:
         d = {}
-        for l1,l2 in l:
+        for l1, l2, _ in l:
             if '_series' not in l1:
                 continue
             for e in spec_list:
@@ -327,10 +369,10 @@ str_html = '''<html>
   {title_}
  </head>
  <body link="blue" vlink="purple">
-  <table width="1200" border="1">
+  <table border="1">
    <col width="80">
    <col width="150">
-   <col width="970">
+   <col>
    {content_} 
   </table>
  </body>
@@ -388,7 +430,7 @@ def html_spec(d):
 def check_meeting_num(t, n):
     try:
         l = t.split('_') 
-        if (2 < len(l)):
+        if (2 > len(l)):
             return False
         r = re.search("\d+",l[1])
         if r is None:
@@ -487,25 +529,23 @@ def grab_meeting_file(p, h):
         return []
     ll = []
     d = {}
-    for l1, l2 in l:
+    for l1, l2, size in l:
         try:
             if (h not in l2):
                 continue
             if ('zip' in l2):
                 f = os.path.join(p, l1)
-                if not (os.path.exists(f)):
-                    if not get_zip_file(f,l2):
-                        print('cannot get ' + l2)
-                        continue
+                if not get_zip_file(f, l2, size):
+                    print('cannot get ' + l2)
+                    continue
                 s = get_zip_fn(f)
                 if (0 < len(s)):
                     ll.append([l1, s, f])
             elif (('TDoc_List_Meeting_' in l2) and ('.xls' in l2)):
                 f = os.path.join(p, l1)
-                if not (os.path.exists(f)):
-                    if not get_xls_file(f,l2):
-                        print('cannot get ' + l2)
-                        continue
+                if not get_xls_file(f, l2, size):
+                    print('cannot get ' + l2)
+                    continue
                 get_xls_info(f, d)
         except Exception as ex:
             printex(str(ex))
@@ -544,7 +584,7 @@ def grab_meeting(p, t, h, n):
         printex(str(ex))
         return []
     try:
-        for ht, hh in l:
+        for ht, hh, _ in l:
             if (('Docs' in ht) and ('Docs' in hh)):
                 return grab_meeting_file(pp, hh)
     except Exception as ex:
@@ -581,7 +621,7 @@ def grab_contrib(t, h, n):
         return {}
     try:
         d = {}
-        for mt, mh in l:
+        for mt, mh, _ in l:
             if ((t in mt) and (h in mh)):
                 print('begin to get ' + mh)
                 ll = grab_meeting(p, mt, mh, n)
@@ -630,12 +670,12 @@ def html_contrib(t, d):
     return
 
 if __name__ == '__main__':
-#     try:
-#         d = grab_spec()
-#         if (0 < len(d)):
-#             html_spec(d)
-#     except Exception as ex:
-#         printex(str(ex))
+    try:
+        d = grab_spec()
+        if (0 < len(d)):
+            html_spec(d)
+    except Exception as ex:
+        printex(str(ex))
     try:
         for t, h, n in contrb_list:
             print('begin to get ' + h)
