@@ -6,6 +6,8 @@ Created on 2020-07-14
 
 import os
 import re
+import time
+import gc
 import httplib2
 from bs4 import BeautifulSoup
 import zipfile
@@ -39,6 +41,16 @@ def printex(s):
     print(s)
     return
 
+
+def strt():
+    s = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    s = s + ' -- '
+    return s 
+
+def printinfo(s):
+    print(strt() +s)
+    return
+    
 def get_href(s):
     tit = ''
     ref = ''
@@ -61,7 +73,10 @@ def get_href(s):
                 ss = ss.replace(',', '')
                 ss = ss.replace('KB', '')
                 ss = ss.strip()
-                siz = int(ss) * 1024
+                # RP-180600.zip 2018/05/23 7:57 43,9 KB
+                # so, '43,9 KB' should be '43.9 KB' 
+                siz = int(ss) * 102 
+#                siz = int(ss) * 1024
     except Exception as ex:
         printex(str(ex))
     return tit, ref, siz
@@ -172,7 +187,7 @@ def get_zip_file(p, h, size):
             f = open(p, 'wb')
             f.write(c)
             f.close()
-            print('get ' + h)
+            printinfo('get ' + h)
             return True
     except Exception as ex:
         printex(str(ex))
@@ -204,7 +219,7 @@ def get_xls_file(p, h, size):
             f = open(p, 'wb')
             f.write(c)
             f.close()
-            print('get ' + h)
+            printinfo('get ' + h)
             return True
     except Exception as ex:
         printex(str(ex))
@@ -234,7 +249,7 @@ def parse_url(c, s):
 def get_spec_file(p, n, h):
     try:
         r,c = http2handle.request(h)
-        print('get ' + h)
+        printinfo('get ' + h)
     except Exception as ex:
         printex(str(ex))
         return ''
@@ -269,7 +284,7 @@ def get_series(s, p, lm):
     ls = []
     try:
         r,c = http2handle.request(s)
-        print('get ' + s)
+        printinfo('get ' + s)
     except Exception as ex:
         printex(str(ex))
         return []
@@ -295,8 +310,10 @@ def get_series(s, p, lm):
             if 1 > len(sn):
                 continue
             fp = get_spec_file(p, l1, l2) 
+            printinfo('get ' + l2)
             if 0 < len(fp):
                 ls.append([l1,sn,fp])
+            gc.collect()
         return ls
     except Exception as ex:
         printex(str(ex))
@@ -308,7 +325,7 @@ def parse_specs(r, c):
 def grab_spec():
     try:
         r,c = http2handle.request(url_spec_rm)
-        print('get ' + url_spec_rm)
+        printinfo('get ' + url_spec_rm)
     except Exception as ex:
         printex(str(ex))
         return {}
@@ -328,7 +345,7 @@ def grab_spec():
         return {}
     try:
         r,c = http2handle.request(url_spec)
-        print('get ' + url_spec)
+        printinfo('get ' + url_spec)
     except Exception as ex:
         printex(str(ex))
         return {}
@@ -356,9 +373,10 @@ def grab_spec():
                     p = os.path.join(path_spec, l1)
                     if (not os.path.exists(p)):
                         os.mkdir(p)
-                    print('begin to get ' + l1)
+                    printinfo('begin to get ' + l1)
                     d[e] = get_series(l2, p, lm)
-                    print('end to get ' + l1)
+                    printinfo('end to get ' + l1)
+                    gc.collect()
         return d
     except Exception as ex:
         printex(str(ex))
@@ -509,7 +527,7 @@ def update_contrib_info(l, d):
 def grab_meeting_file(p, h):
     try:
         r,c = http2handle.request(h)
-        print('get ' + h)
+        printinfo('get ' + h)
     except Exception as ex:
         printex(str(ex))
         return []
@@ -536,17 +554,19 @@ def grab_meeting_file(p, h):
             if ('zip' in l2):
                 f = os.path.join(p, l1)
                 if not get_zip_file(f, l2, size):
-                    print('cannot get ' + l2)
+                    printinfo('cannot get ' + l2)
                     continue
+                #printinfo('get ' + l2)
                 s = get_zip_fn(f)
                 if (0 < len(s)):
                     ll.append([l1, s, f])
             elif (('TDoc_List_Meeting_' in l2) and ('.xls' in l2)):
                 f = os.path.join(p, l1)
                 if not get_xls_file(f, l2, size):
-                    print('cannot get ' + l2)
+                    printinfo('cannot get ' + l2)
                     continue
                 get_xls_info(f, d)
+            gc.collect()
         except Exception as ex:
             printex(str(ex))
     if (0 < len(d)):
@@ -565,7 +585,7 @@ def grab_meeting(p, t, h, n):
         return []
     try:
         r,c = http2handle.request(h)
-        print('get ' + h)
+        printinfo('get ' + h)
     except Exception as ex:
         printex(str(ex))
         return []
@@ -601,7 +621,7 @@ def grab_contrib(t, h, n):
         return {}
     try:
         r,c = http2handle.request(h)
-        print('get ' + h)
+        printinfo('get ' + h)
     except Exception as ex:
         printex(str(ex))
         return {}
@@ -614,6 +634,7 @@ def grab_contrib(t, h, n):
         return {}
     try:
         l = parse_url(c, cs)
+        gc.collect()
         if (1 > len(l)):
             return  {}
     except Exception as ex:
@@ -623,11 +644,12 @@ def grab_contrib(t, h, n):
         d = {}
         for mt, mh, _ in l:
             if ((t in mt) and (h in mh)):
-                print('begin to get ' + mh)
+                printinfo('begin to get ' + mh)
                 ll = grab_meeting(p, mt, mh, n)
-                print('end to get ' + mh)
+                printinfo('end to get ' + mh)
                 if (0 < len(ll)):
                     d[mt] = ll
+                gc.collect()
         if (0 < len(d)):
             return d
     except Exception as ex:
@@ -665,6 +687,7 @@ def html_contrib(t, d):
         f = open(p, mode = 'wb')
         f.write(s)
         f.close()
+        gc.collect()
     except Exception as ex:
         printex(str(ex))
     return
@@ -674,15 +697,18 @@ if __name__ == '__main__':
         d = grab_spec()
         if (0 < len(d)):
             html_spec(d)
+        gc.collect()
     except Exception as ex:
         printex(str(ex))
     try:
         for t, h, n in contrb_list:
-            print('begin to get ' + h)
+            printinfo('begin to get ' + h)
             d = grab_contrib(t, h, n)
-            print('end to get ' + h)
+            printinfo('end to get ' + h)
             if (0 < len(d)):
                 html_contrib(t, d)
+            gc.collect()
     except Exception as ex:
         printex(str(ex))
+    printinfo('all done!')
     exit(0)
