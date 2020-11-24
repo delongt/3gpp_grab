@@ -6,7 +6,7 @@ Created on 2020-07-14
 
 import os
 import re
-
+import gc
 import Comm as C
 
 path_root = './'
@@ -250,7 +250,7 @@ def grab_series_info():
 
 str_html = '''<html>
  <head>
-  ITU-T
+  <title>ITUT (powered by delong tang)</title>
  </head>
  <body link="blue" vlink="purple">
   <table border="0">
@@ -281,22 +281,22 @@ str_tr1 = '''   <tr>
    </tr>'''
 
 def html_itut(d):
-    s = ''
+    sh = ''
     try:
         for e in d:
+            sr = ''
             for ee in d[e][1]:
-                if (1 == len(d[e][1][ee])):
-                    ss = str_tr0.format(href_ = d[e][1][ee][0][2], name_ = d[e][1][ee][0][0], title_ = d[e][1][ee][0][1])
-                    s = s + ss;
-                else:
-                    ss = str_tr0.format(href_ = d[e][1][ee][0][2], name_ = d[e][1][ee][0][0], title_ = d[e][1][ee][0][1])
-                    s = s + ss;
+                if (not isinstance(d[e][1][ee], list)):
+                    continue
+                s0 = str_tr0.format(href_ = d[e][1][ee][0][2], name_ = d[e][1][ee][0][0], title_ = d[e][1][ee][0][1])
+                if (1 < len(d[e][1][ee])):
                     for i in range(1, len(d[e][1][ee])):
-                        ss = str_tr1.format(href_ = d[e][1][ee][i][2], name_ = d[e][1][ee][i][0], title_ = d[e][1][ee][i][1])
-                        s = s + ss;
-            ss = str_table.format(series_ = e, title_ = d[e][0])
-            s = ss + s
-        ss = str_html.format(content_ = s)
+                        s1 = str_tr1.format(href_ = d[e][1][ee][i][2], name_ = d[e][1][ee][i][0], title_ = d[e][1][ee][i][1])
+                        s0 = s0 + s1
+                sr = sr + s0
+            st = str_table.format(series_ = e, title_ = d[e][0])
+            sh = sh + st + sr
+        s = str_html.format(content_ = sh)
     except Exception as ex:
         C.printEx(ex)
         return
@@ -316,6 +316,7 @@ def grabItut():
         dr = grab_series_info()
         if (1 > len(dr)):
             return
+        gc.collect()
     except Exception as ex:
         C.printEx(ex)
         return
@@ -325,6 +326,7 @@ def grabItut():
             r = grab_series(e)
             if (0 < len(r)):
                 d[e] = [dr[e], r]
+        gc.collect()
     except Exception as ex:
         C.printEx(ex)
     try:
@@ -333,17 +335,20 @@ def grabItut():
                 fl = grab_file(ee)
                 if (0 < len(fl)):
                     d[e][1][ee] = fl
+        gc.collect()
     except Exception as ex:
         C.printEx(ex)
     try:
-        html_itut(dr)
+        html_itut(d)
     except Exception as ex:
         C.printEx(ex)
     return
 
 if __name__ == '__main__':
     try:
-        grabItut()
+        d = C.loadObj("c:/123.dump")
+        html_itut(d)
+#        grabItut()
     except Exception as ex:
         C.printEx(ex)
     pass
