@@ -10,7 +10,7 @@ import httplib2
 import bs4
 from bs4 import BeautifulSoup as BS
 
-#import pickle  
+import pickle  
 
 hh = httplib2.Http()
 hhs = httplib2.Http(disable_ssl_certificate_validation=True)
@@ -113,10 +113,24 @@ def getHref(s):
         printEx(ex)
     return ''
 
+def dumpObj(c, f):
+    try:
+        fo = open(f, 'wb')
+        pickle.dump(c, fo)
+        fo.close()
+    except Exception as ex:
+        printEx(ex)
+    return
 
-
-
-
+def loadObj(f):
+    try:
+        fo = open(f, 'rb')
+        o = pickle.load(fo)
+        fo.close()
+    except Exception as ex:
+        printEx(ex)
+        return None
+    return o
 
 
 
